@@ -1,0 +1,8 @@
+{
+
+    "require": {
+        "guzzlehttp/guzzle": "^6.5.8",
+        "kevinrob/guzzle-cache-middleware": "v3.5.0",
+        "league/flysystem": "^1.1.9"
+    }
+}
