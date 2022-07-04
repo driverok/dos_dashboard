@@ -2,12 +2,12 @@
 require 'src/Parser.php';
 use Dosdashboard\Parser;
 
-$parser = new Parser();
+$parser = new Parser(20);
 echo "\n Starting...";
-//$comments = $parser->getCommentsByUser('driverok');
-$comments_by_company = $parser->getCommentsByCompany($parser::EPAM_ID);
-$comments_by_customer = $parser->getCommentsByCustomer($parser::EPAM_ID);
-$comments = array_merge($comments_by_company, $comments_by_customer);
+$comments = $parser->getCommentsByUser('driverok');
+//$comments_by_company = $parser->getCommentsByCompany($parser::EPAM_ID);
+//$comments_by_customer = $parser->getCommentsByCustomer($parser::EPAM_ID);
+//$comments = array_merge($comments_by_company, $comments_by_customer);
 $comments_credited = [];
 echo "\n Comments gathered (" . count($comments). ')';
 foreach ($comments as $comment) {
@@ -32,6 +32,6 @@ foreach ($comments as $comment) {
   if ($is_credited) {
     $comments_credited[$issue['nid']] = $parser->prepareResponse($comment, $issue, $project, $user);
   }
-  $parser->writeCSV($comments_credited);
 }
+$parser->writeCSV($comments_credited);
 echo "\n Finish. (" . (count($comments_credited)) . ' credits)';

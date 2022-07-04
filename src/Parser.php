@@ -26,6 +26,7 @@ class Parser {
   public const CACHE_TTL = 180000;
   public const CACHE_LOCATION = '/tmp/dos';
   public const CSV_FILENAME = '/tmp/contribution_credits.csv';
+  public const MAPPING_FILENAME = 'assets/mapping.csv';
 
   /**
    * @var \GuzzleHttp\Client
@@ -104,6 +105,7 @@ class Parser {
         $project_usage += $usage;
       }
     }
+    $mapping = $this->readMapping();
     $weight = $this->getWeight($project['field_project_machine_name'], $project['type'], $project_usage);
     return [
       'project_nid' => $project['nid'] ?? '',
@@ -118,6 +120,7 @@ class Parser {
       'issue_url' => $issue['url'] ?? '',
       'uid' => $user['uid'],
       'user_name' => $user['name'],
+      'user_email' => $mapping[$user['name']] ?? '',
       'user_country' => $user['field_country'],
       'user_url' => $user['url'],
       'user_fio' => $user['field_first_name'] . ' ' . $user['field_last_name'] ,
@@ -139,6 +142,7 @@ class Parser {
       'Issue URL',
       'Uid',
       'User Name',
+      'User Email',
       'User Country',
       'User URL',
       'User FIO',
@@ -153,6 +157,19 @@ class Parser {
       fputcsv($fp, $fields);
     }
     fclose($fp);
+  }
+
+  private function readMapping() {
+    $result = [];
+    if (($handle = fopen(__DIR__ . DIRECTORY_SEPARATOR . self::MAPPING_FILENAME, "r")) !== FALSE) {
+      while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
+        $dorg_name = $data[0] ?? '';
+        $epam_name = $data[1] ?? '';
+        $result[$dorg_name] = $epam_name;
+      }
+      fclose($handle);
+    }
+    return $result;
   }
 
   private function getWeight($project_name, $project_type, $usages) {
@@ -196,7 +213,6 @@ class Parser {
     } catch (ClientException | GuzzleException $e) {
       echo $e->getMessage();
     }
-//    echo "\n    " . $uri . '?' . http_build_query($params);
     return json_decode($body, TRUE, 512, JSON_THROW_ON_ERROR);
   }
 
