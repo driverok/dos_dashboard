@@ -11,7 +11,7 @@ Class Credits implements Contribution {
   public const COMMENTS_ENDPOINT = 'comment.json';
   public const NODE_ENDPOINT = 'node.json';
   public const USER_ENDPOINT = 'user.json';
-  public const EPAM_ID = 2114867;
+  //public const EPAM_ID = 2114867;
   public const CONTRIB_TYPE = 'credit';
 
   /**
@@ -23,17 +23,28 @@ Class Credits implements Contribution {
 
   private $end_date;
 
-  public function __construct($start_date, $end_date) {
+  private $user;
+
+  private $company;
+
+  public function __construct($company, $user, $start_date, $end_date) {
     $this->handler = new Handler(self::CONTRIBUTION_TITLES, self::BASE_ENDPOINT);
+    $this->company = $company;
+    $this->user = $user;
     $this->start_date = $start_date;
     $this->end_date = $end_date;
   }
 
   public function getPushes() {
-//    $comments = $parser->getCommentsByUser('driverok');
-    $comments_by_company = $this->getCommentsByCompany(self::EPAM_ID);
-    $comments_by_customer = $this->getCommentsByCustomer(self::EPAM_ID);
-    $comments = array_merge($comments_by_company, $comments_by_customer);
+    $comments = [];
+    if (!empty($this->company)) {
+      $comments_by_company = $this->getCommentsByCompany($this->company);
+      $comments_by_customer = $this->getCommentsByCustomer($this->company);
+      $comments = array_merge($comments_by_company, $comments_by_customer);
+    }
+    if (!empty($this->user)) {
+      $comments = $this->getCommentsByUser($this->user);
+    }
     $comments_credited = [];
     echo "\n Comments gathered (" . count($comments). ')';
     foreach ($comments as $comment) {
@@ -62,6 +73,15 @@ Class Credits implements Contribution {
       }
     }
     return $comments_credited;
+  }
+  public function getCommentsByUser($user): array {
+    $params = [
+      'name' => $user,
+      'sort' => 'created',
+      'direction' => 'desc',
+      'page' => 0,
+    ];
+    return $this->getComments($params);
   }
 
 
@@ -130,10 +150,6 @@ Class Credits implements Contribution {
       'contrib_type' => self::CONTRIB_TYPE,
       'contrib_description' => serialize($description_arr),
     ];
-  }
-
-  public function getHeaders() {
-    return self::CONTRIBUTION_TITLES;
   }
 
   private function inTimeFrame($comment_date) {
