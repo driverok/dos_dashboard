@@ -1,37 +1,14 @@
 <?php
-require 'src/Parser.php';
-use Dosdashboard\Parser;
+require 'vendor/autoload.php';
+use Dosdashboard\Parsers\Credits;
+// @TODO: add args for time frame, company, user
 
-$parser = new Parser(20);
-echo "\n Starting...";
-$comments = $parser->getCommentsByUser('driverok');
-//$comments_by_company = $parser->getCommentsByCompany($parser::EPAM_ID);
-//$comments_by_customer = $parser->getCommentsByCustomer($parser::EPAM_ID);
-//$comments = array_merge($comments_by_company, $comments_by_customer);
-$comments_credited = [];
-echo "\n Comments gathered (" . count($comments). ')';
-foreach ($comments as $comment) {
-  if (!$comment || empty($comment['node'])) {
-    continue;
-  }
-  echo '.';
-  $issue = $parser->getNode($comment['node']['id'])['list'][0];
-  $project = $parser->getNode($issue['field_project']['id'])['list'][0];
-  $user = $parser->getUser($comment['author']['id'])['list'][0];
+$start  = mktime(0, 0, 0, date("m") -6  , 1, date("Y"));
+$end  = mktime(0, 0, 0, date("m")  , 31, date("Y"));
+$credit_parser = new Credits($start, $end);
+echo "\n Starting gathering credits from " . date('d.m.Y', $start) . ' till ' . date('d.m.Y', $end);
 
+$pushes = $credit_parser->getPushes();
+$credit_parser->handler->writeCSV($pushes);
 
-  if (empty($issue['field_issue_credit'])) {
-    continue;
-  }
-
-  if ($issue['field_issue_status'] !== '7' && $issue['field_issue_status'] !== '2') {
-    continue;
-  }
-
-  $is_credited = array_filter($issue['field_issue_credit'], static function($v, $k) use ($comment) {return $v['id'] === $comment['cid'];}, ARRAY_FILTER_USE_BOTH);
-  if ($is_credited) {
-    $comments_credited[$issue['nid']] = $parser->prepareResponse($comment, $issue, $project, $user);
-  }
-}
-$parser->writeCSV($comments_credited);
-echo "\n Finish. (" . (count($comments_credited)) . ' credits)';
+echo "\n Finish. (" . (count($pushes)) . ' credits)';

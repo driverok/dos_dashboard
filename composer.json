@@ -1,8 +1,21 @@
 {
-
+    "name": "driverok/dosdashboard",
+    "description": "Drupal open-source dashboard",
+    "authors": [
+        {
+            "name": "Aleh Brytvich",
+            "email": "driverok@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
     "require": {
         "guzzlehttp/guzzle": "^6.5.8",
         "kevinrob/guzzle-cache-middleware": "v3.5.0",
         "league/flysystem": "^1.1.9"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dosdashboard\\": "src/"
+        }
     }
 }
