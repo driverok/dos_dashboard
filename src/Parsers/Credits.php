@@ -27,8 +27,8 @@ Class Credits implements Contribution {
 
   private $company;
 
-  public function __construct($company, $user, $start_date, $end_date) {
-    $this->handler = new Handler(self::CONTRIBUTION_TITLES, self::BASE_ENDPOINT);
+  public function __construct($company, $user, $start_date, $end_date, $verbose) {
+    $this->handler = new Handler(self::CONTRIBUTION_TITLES, self::BASE_ENDPOINT, $verbose);
     $this->company = $company;
     $this->user = $user;
     $this->start_date = $start_date;
@@ -46,12 +46,12 @@ Class Credits implements Contribution {
       $comments = $this->getCommentsByUser($this->user);
     }
     $comments_credited = [];
-    echo "\n Comments gathered (" . count($comments). ')';
+    $this->handler->log(' Comments gathered (' . count($comments). ')');
     foreach ($comments as $comment) {
       if (!$comment || empty($comment['node'])) {
         continue;
       }
-      echo '.';
+      $this->handler->log('.', TRUE);
       $issue = $this->getNode($comment['node']['id'])['list'][0];
       $project = $this->getNode($issue['field_project']['id'])['list'][0];
       $user = $this->getUser($comment['author']['id'])['list'][0];
@@ -74,7 +74,7 @@ Class Credits implements Contribution {
     }
     return $comments_credited;
   }
-  public function getCommentsByUser($user): array {
+  private function getCommentsByUser($user): array {
     $params = [
       'name' => $user,
       'sort' => 'created',
@@ -85,7 +85,7 @@ Class Credits implements Contribution {
   }
 
 
-  public function getCommentsByCompany($company) {
+  private function getCommentsByCompany($company) {
     $params = [
       'field_attribute_contribution_to' => $company,
       'sort' => 'created',
@@ -95,7 +95,7 @@ Class Credits implements Contribution {
     return $this->getComments($params);
   }
 
-  public function getCommentsByCustomer($customer): array {
+  private function getCommentsByCustomer($customer): array {
     $params = [
       'field_for_customer' => $customer,
       'sort' => 'created',
@@ -105,15 +105,15 @@ Class Credits implements Contribution {
     return $this->getComments($params);
   }
 
-  public function getNode($issue_id) {
+  private function getNode($issue_id) {
     return $this->handler->makeRequest(self::NODE_ENDPOINT, ['nid' => $issue_id]);
   }
 
-  public function getUser($user_id) {
+  private function getUser($user_id) {
     return $this->handler->makeRequest(self::USER_ENDPOINT, ['uid' => $user_id]);
   }
 
-  public function prepareResponse($issue, $project, $user) {
+  private function prepareResponse($issue, $project, $user) {
     $project_usage = 0;
     if (!empty($project['project_usage'])) {
       foreach ($project['project_usage'] as $usage) {
@@ -148,7 +148,7 @@ Class Credits implements Contribution {
       'contrib_url' => $issue['url'] ?? '',
       'contrib_date' =>date('d.m.Y', $issue['changed']) ?? '',
       'contrib_type' => self::CONTRIB_TYPE,
-      'contrib_description' => serialize($description_arr),
+      'contrib_description' => $this->handler->verbose ? serialize($description_arr) : $project['title'],
     ];
   }
 
@@ -157,13 +157,16 @@ Class Credits implements Contribution {
   }
 
   private function getComments($params, $response = []): array {
+    if ($this->handler->verbose) {
+      $this->handler->log(' Parsing comments API, page ' . $params['page']);
+    }
     $comments = $this->handler->makeRequest(self::COMMENTS_ENDPOINT, $params);
     $response = array_merge($response, $comments['list']);
     if ($comments['self'] === $comments['last']) {
       return $response;
     }
     $last_comment_date = end($comments['list'])['created'];
-    if ($last_comment_date <= $this->start_date) {
+    if ($last_comment_date < $this->start_date) {
       return $response;
     }
     $params['page']++;

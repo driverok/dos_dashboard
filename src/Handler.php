@@ -26,7 +26,9 @@ class Handler {
 
   private $titles;
 
-  public function __construct($titles, $base_uri) {
+  public $verbose;
+
+  public function __construct($titles, $base_uri, $verbose) {
     $stack = HandlerStack::create();
     $stack->push(
       new CacheMiddleware(
@@ -43,6 +45,7 @@ class Handler {
       'base_uri' => $base_uri,
     ]);
     $this->titles = $titles;
+    $this->verbose = $verbose;
 
   }
 
@@ -80,4 +83,10 @@ class Handler {
     return json_decode($body, TRUE, 512, JSON_THROW_ON_ERROR);
   }
 
+  public function log($message, $inline = FALSE) {
+    if ($this->verbose) {
+      $prefix = !$inline ? "\n" . date('H:i') : '';
+      echo $prefix . $message;
+    }
+  }
 }
