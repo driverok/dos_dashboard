@@ -27,8 +27,8 @@ Class Credits implements Contribution {
 
   private $company;
 
-  public function __construct($company, $user, $start_date, $end_date, $verbose) {
-    $this->handler = new Handler(self::CONTRIBUTION_TITLES, self::BASE_ENDPOINT, $verbose);
+  public function __construct($company, $user, $start_date, $end_date, $verbose, $mapping_file) {
+    $this->handler = new Handler(self::CONTRIBUTION_TITLES, self::BASE_ENDPOINT, $verbose, $mapping_file);
     $this->company = $company;
     $this->user = $user;
     $this->start_date = $start_date;
@@ -120,7 +120,6 @@ Class Credits implements Contribution {
         $project_usage += $usage;
       }
     }
-    $mail_mapping = $this->handler->readMapping();
     $description_arr = [
       'project_nid' => $project['nid'] ?? '',
       'project_title' => $project['title'] ?? '',
@@ -133,14 +132,14 @@ Class Credits implements Contribution {
       'issue_url' => $issue['url'] ?? '',
       'uid' => $user['uid'],
       'user_name' => $user['name'],
-      'user_email' => $mail_mapping[$user['name']] ?? '',
+      'user_email' => $this->handler->mapping[strtolower($user['url'])] ?? '',
       'user_country' => $user['field_country'],
       'user_url' => $user['url'],
       'user_fio' => $user['field_first_name'] . ' ' . $user['field_last_name'] ,
       'credit_date' => $issue['changed'] ?? '',
     ];
     return [
-      'user_email' => $mail_mapping[$user['name']] ?? '',
+      'user_email' => $this->handler->mapping[strtolower($user['url'])] ?? '',
       'user_name' => $user['name'],
       'user_country' => $user['field_country'],
       'user_url' => $user['url'],

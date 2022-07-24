@@ -18,6 +18,7 @@ class Handler {
   public const CACHE_LOCATION = '/tmp/dos';
   public const CSV_FILENAME = '/tmp/contribution_credits.csv';
   public const MAPPING_FILENAME = 'assets/mapping.csv';
+  public const DORG_URL_PREFIX = 'https://www.drupal.org/u/';
 
   /**
    * @var \GuzzleHttp\Client
@@ -28,7 +29,14 @@ class Handler {
 
   public $verbose;
 
-  public function __construct($titles, $base_uri, $verbose) {
+  /**
+   * @var mixed|string
+   */
+  private mixed $mapping_file;
+
+  public array $mapping;
+
+  public function __construct($titles, $base_uri, $verbose, $mapping_file = NULL) {
     $stack = HandlerStack::create();
     $stack->push(
       new CacheMiddleware(
@@ -46,7 +54,11 @@ class Handler {
     ]);
     $this->titles = $titles;
     $this->verbose = $verbose;
-
+    if (!file_exists(__DIR__ . DIRECTORY_SEPARATOR . $mapping_file)) {
+      $mapping_file = '../' . $mapping_file;
+    }
+    $this->mapping_file = $mapping_file ?? self::MAPPING_FILENAME;
+    $this->mapping = $this->readMapping();
   }
 
   public function writeCSV($results) {
@@ -60,11 +72,11 @@ class Handler {
 
   public function readMapping() {
     $result = [];
-    if (($handle = fopen(__DIR__ . DIRECTORY_SEPARATOR . self::MAPPING_FILENAME, "r")) !== FALSE) {
+    if (($handle = fopen(__DIR__ . DIRECTORY_SEPARATOR . $this->mapping_file, "r")) !== FALSE) {
       while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
         $dorg_name = $data[0] ?? '';
         $epam_name = $data[1] ?? '';
-        $result[$dorg_name] = $epam_name;
+        $result[strtolower($dorg_name)] = strtolower($epam_name);
       }
       fclose($handle);
     }
