@@ -29,10 +29,7 @@ class Handler {
 
   public $verbose;
 
-  /**
-   * @var mixed|string
-   */
-  private mixed $mapping_file;
+  private $mapping_file;
 
   public array $mapping;
 
@@ -57,7 +54,7 @@ class Handler {
     if (!file_exists(__DIR__ . DIRECTORY_SEPARATOR . $mapping_file)) {
       $mapping_file = '../' . $mapping_file;
     }
-    $this->mapping_file = $mapping_file ?? self::MAPPING_FILENAME;
+    $this->mapping_file = $mapping_file ?: self::MAPPING_FILENAME;
     $this->mapping = $this->readMapping();
   }
 

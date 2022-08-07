@@ -43,7 +43,12 @@ if (!empty($company) && !empty($user)) {
 echo "\n" . date('H:i') . ' Gathering credits from ' . $start . ' till ' . $end . ' ...';
 
 $credit_parser = new Credits($company, $user, $start_tm, $end_tm, $verbose, $mapping_file);
-$pushes = $credit_parser->getPushes();
+$credit_pushes = $credit_parser->getPushes();
+
+$drupalcode_parser = new \Dosdashboard\Parsers\Drupalcode($user, $start_tm, $end_tm);
+$drupalcode_pushes = $drupalcode_parser->getPushes();
+
+$pushes = array_merge($credit_pushes, $drupalcode_pushes);
 $credit_parser->handler->writeCSV($pushes);
 
 echo "\n" . date('H:i') . ' Finish. (' . (count($pushes)) . ' credits). ' . $credit_parser->handler::CSV_FILENAME;
