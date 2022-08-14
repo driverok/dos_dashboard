@@ -19,6 +19,8 @@ Class Credits implements Contribution {
    */
   public Handler $handler;
 
+  public array $users;
+
   private $start_date;
 
   private $end_date;
@@ -55,7 +57,7 @@ Class Credits implements Contribution {
       $issue = $this->getNode($comment['node']['id'])['list'][0];
       $project = $this->getNode($issue['field_project']['id'])['list'][0];
       $user = $this->getUser($comment['author']['id'])['list'][0];
-
+      $this->users[$user['uid']] = $user;
       if (empty($issue['field_issue_credit'])) {
         continue;
       }

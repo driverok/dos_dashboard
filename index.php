@@ -1,6 +1,8 @@
 <?php
 require 'vendor/autoload.php';
 use Dosdashboard\Parsers\Credits;
+use Dosdashboard\Parsers\Drupalcode;
+
 $shortopts = "c:";
 $shortopts .= "u:";
 $shortopts .= "sd::";
@@ -43,12 +45,20 @@ if (!empty($company) && !empty($user)) {
 echo "\n" . date('H:i') . ' Gathering credits from ' . $start . ' till ' . $end . ' ...';
 
 $credit_parser = new Credits($company, $user, $start_tm, $end_tm, $verbose, $mapping_file);
+$drupalcode_parser = new Drupalcode('', $start_tm, $end_tm);
+
 $credit_pushes = $credit_parser->getPushes();
-
-$drupalcode_parser = new \Dosdashboard\Parsers\Drupalcode($user, $start_tm, $end_tm);
-$drupalcode_pushes = $drupalcode_parser->getPushes();
-
-$pushes = array_merge($credit_pushes, $drupalcode_pushes);
+echo "\n Gathered " . count($credit_parser->users) . ' users';
+foreach ($credit_parser->users as $user) {
+  echo "\n Processing user " . $user['name'];
+  $drupalcode_parser->setUser($user['name']);
+  $drupalcode_parser->clearState();
+  $drupalcode_pushes = $drupalcode_parser->getPushes();
+  $credit_pushes = array_merge($credit_pushes, $drupalcode_pushes);
+  echo ", found " . count($drupalcode_pushes) . ' pushes to gitlab';
+}
+echo "\n Found " . count($credit_pushes) . ' pushes';die();
+//$pushes = array_merge($credit_pushes, $drupalcode_pushes);
 $credit_parser->handler->writeCSV($pushes);
 
 echo "\n" . date('H:i') . ' Finish. (' . (count($pushes)) . ' credits). ' . $credit_parser->handler::CSV_FILENAME;

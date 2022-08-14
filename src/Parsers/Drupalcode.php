@@ -35,12 +35,22 @@ class Drupalcode implements Contribution {
     $this->dom = new Dom();
   }
 
+  public function clearState() {
+    $this->offset = 0;
+    $this->pushes = [];
+    $this->endActivity = FALSE;
+  }
+
   public function getPushes() {
     while (!$this->endActivity) {
       $this->getUserActivity();
     }
 
   return $this->pushes;
+  }
+
+  public function setUser($user) {
+    $this->userName = $user;
   }
 
   public function writeCSV($results) {
@@ -65,7 +75,7 @@ class Drupalcode implements Contribution {
       'User-Agent: Postman',
       'X-Requested-With: XMLHttpRequest'
     ]);
-
+    echo "\n checking activity for " . $this->userName;
     $this->parseUserActivity(json_decode(curl_exec($ch)));
     curl_close($ch);
 
@@ -73,7 +83,11 @@ class Drupalcode implements Contribution {
   }
 
   public function parseUserActivity($result) {
+    if (empty($result->html)) {
+      return;
+    }
     $events = $this->dom->loadStr($result->html)->find('div.event-item');
+    echo ' found ' . count($events);
     foreach ($events as $event) {
       $time = $event->find('time')->text;
       $from = date('M d, Y', $this->fromTimestamp);
@@ -104,13 +118,16 @@ class Drupalcode implements Contribution {
       }
 
       if ($event_type === 'opened') {
-        $event_type = $event_type . ' ' . $event->find('div.event-title')->find('span.event-target-type')->text;
+        $event_type .= ' ' . $event->find('div.event-title')
+            ->find('span.event-target-type')->text;
         $contrib_description = $event->find('div.event-title')->find('.event-target-title')->text;
         $contrib_url = 'https://git.drupalcode.org' . $event->find('div.event-title')->find('.event-target-link')->href;
       }
 
       if ($event_type === 'pushed to branch') {
-        $event_type = $event_type . ' ' . $event->find('div.event-title')->find('.text-truncate')->find('.ref-name')->text;
+        $event_type .= ' ' . $event->find('div.event-title')
+            ->find('.text-truncate')
+            ->find('.ref-name')->text;
         $contrib_description = $event->find('.commit-row-title')->text;
         $contrib_url = 'https://git.drupalcode.org' . $event->find('.event-body')->find('.commit-sha')->href;
       }
@@ -126,14 +143,15 @@ class Drupalcode implements Contribution {
         'contrib_type' => $event_type,
         'contrib_description' => $contrib_description
       ];
-      echo PHP_EOL . 'Total Drupalcode pushes: ' . count($this->pushes);
     }
+    echo PHP_EOL . 'Total Drupalcode pushes: ' . count($this->pushes);
   }
 
   private function getProjectHtml($project_name) {
     $project_ch = curl_init();
     curl_setopt($project_ch, CURLOPT_URL, 'https://git.drupalcode.org/project/' . $project_name);
     curl_setopt($project_ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($project_ch,CURLOPT_TIMEOUT,2000);
     curl_setopt($project_ch, CURLOPT_HTTPHEADER, [
       'Accept: application/json, text/plain, */*',
       'User-Agent: Postman',
