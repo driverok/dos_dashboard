@@ -7,6 +7,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use \GuzzleHttp\Exception\ClientException;
 
 use GuzzleHttp\HandlerStack;
+use JsonException;
 use Kevinrob\GuzzleCache\CacheMiddleware;
 
 use Kevinrob\GuzzleCache\Storage\FlysystemStorage;
@@ -32,6 +33,8 @@ class Handler {
   private $mapping_file;
 
   public array $mapping;
+
+  public array $unknown_users = [];
 
   public function __construct($titles, $base_uri, $verbose, $mapping_file = NULL) {
     $stack = HandlerStack::create();
@@ -80,16 +83,31 @@ class Handler {
     return $result;
   }
 
-  public function makeRequest($uri, $params) {
+  public function mapUser($user) {
+    if (!empty($this->mapping[strtolower($user)])) {
+      return $this->mapping[strtolower($user)];
+    }
+
+    $this->unknown_users[$user] = $user;
+    return $user;
+  }
+
+  public function makeRequest($uri, $params, $headers = NULL) {
+    $results = [];
     try {
       $response = $this->client->request('GET', $uri, [
-        'query' => $params
+        'query' => $params,
+        'headers' => $headers
       ]);
+      if ($response->getStatusCode() !== 200) {
+        return $results;
+      }
       $body = $response->getBody();
-    } catch (ClientException | GuzzleException $e) {
-      echo $e->getMessage();
+      $results = json_decode($body, TRUE, 512, JSON_THROW_ON_ERROR);
+    } catch (ClientException | GuzzleException | JsonException $e) {
+      $this->log($e->getMessage());
     }
-    return json_decode($body, TRUE, 512, JSON_THROW_ON_ERROR);
+    return $results;
   }
 
   public function log($message, $inline = FALSE) {

@@ -22,8 +22,16 @@ use const PHP_EOL;
 class Drupalcode implements Contribution {
 
   public const CSV_FILENAME = '/tmp/contribution_credits.csv';
+  private const DORG_USER_PROFILE_BASE = 'https://www.drupal.org/u/';
 
-  public function __construct($user_name, $from_timestamp, $to_timestamp) {
+  /**
+   * @var \Dosdashboard\Handler
+   */
+  private Handler $handler;
+  public const BASE_ENDPOINT = 'https://git.drupalcode.org/users/';
+
+  public function __construct($user_name, $from_timestamp, $to_timestamp, $verbose, $mapping_file=NULL) {
+    $this->handler = new Handler(self::CONTRIBUTION_TITLES, self::BASE_ENDPOINT, $verbose, $mapping_file);
     $this->userName = $user_name;
     $this->fromTimestamp = $from_timestamp;
     $this->toTimestamp = $to_timestamp;
@@ -53,41 +61,35 @@ class Drupalcode implements Contribution {
     $this->userName = $user;
   }
 
-  public function writeCSV($results) {
-    $fp = fopen(self::CSV_FILENAME, 'w');
-
-    foreach ($results as $fields) {
-      fputcsv($fp, $fields);
-    }
-
-    fclose($fp);
-  }
-
   public function getUserActivity() {
-    $results = [];
-
-    $ch = curl_init();
-    // Let's use xjm user for reference.
-    curl_setopt($ch, CURLOPT_URL, 'https://git.drupalcode.org/users/' . $this->userName . '/activity?limit=' . $this->limit. '&offset=' . $this->offset);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-      'Accept: application/json, text/plain, */*',
-      'User-Agent: Postman',
-      'X-Requested-With: XMLHttpRequest'
-    ]);
-    echo "\n checking activity for " . $this->userName;
-    $this->parseUserActivity(json_decode(curl_exec($ch)));
-    curl_close($ch);
+    $url = self::BASE_ENDPOINT . $this->userName . '/activity';
+    $headers = [
+      'Accept' => 'application/json, text/plain, */*',
+      'User-Agent' => 'Postman',
+      'X-Requested-With' => 'XMLHttpRequest',
+    ];
+    $params = ['limit' => $this->limit, 'offset' => $this->offset];
+    $results = $this->handler->makeRequest($url, $params, $headers);
+    $this->parseUserActivity($results);
 
     $this->offset += $this->limit;
   }
 
   public function parseUserActivity($result) {
-    if (empty($result->html)) {
+    if (empty($result['html'])) {
+      $this->endActivity = TRUE;
       return;
     }
-    $events = $this->dom->loadStr($result->html)->find('div.event-item');
-    echo ' found ' . count($events);
+    if (empty($result['count'])) {
+      $this->endActivity = TRUE;
+      return;
+    }
+
+    $events = $this->dom->loadStr($result['html'])->find('div.event-item');
+    if (count($events) === 0) {
+      $this->endActivity = TRUE;
+      return;
+    }
     foreach ($events as $event) {
       $time = $event->find('time')->text;
       $from = date('M d, Y', $this->fromTimestamp);
@@ -95,22 +97,17 @@ class Drupalcode implements Contribution {
       $timestamp = strtotime($time);
 
       if ($timestamp > $this->toTimestamp) {
-        echo PHP_EOL . 'Acitivity was made at ' . $time . ', which is newer than requested, till ' . $to;
+        $this->handler->log(PHP_EOL . 'Activity was made at ' . $time . ', which is newer than requested, till ' . $to);
         // Still did not reach start date, latest activities newer than requested.
         continue;
       }
 
       if ($timestamp < $this->fromTimestamp) {
-        echo PHP_EOL . 'Acitivity was made at ' . $time . ', which is older than requested, from ' . $from;
+        $this->handler->log(PHP_EOL . 'Activity was made at ' . $time . ', which is older than requested, from ' . $from);
         // Reach start date, older activities are not required.
         $this->endActivity = TRUE;
         return;
       }
-
-      $project_name = $event->find('div.event-title')->find('span.event-scope')->find('a')->title;
-      $project_html = $this->getProjectHtml($project_name);
-      $project_dom = $this->dom->loadStr($project_html);
-      // $project_id = $project_dom->find('body')->getAttribute('data-project-id');
 
       $event_type = trim($event->find('div.event-title')->find('span.event-type')->text);
       if (!in_array($event_type, ['pushed to branch', 'opened'])) {
@@ -133,7 +130,7 @@ class Drupalcode implements Contribution {
       }
 
       $this->pushes[] = [
-        'user_email' => '',
+        'user_email' => $this->handler->mapUser(self::DORG_USER_PROFILE_BASE . strtolower($this->userName)),
         'user_name' => $this->userName,
         'user_country' => '',
         'user_url' => '',
@@ -144,44 +141,7 @@ class Drupalcode implements Contribution {
         'contrib_description' => $contrib_description
       ];
     }
-    echo PHP_EOL . 'Total Drupalcode pushes: ' . count($this->pushes);
-  }
-
-  private function getProjectHtml($project_name) {
-    $project_ch = curl_init();
-    curl_setopt($project_ch, CURLOPT_URL, 'https://git.drupalcode.org/project/' . $project_name);
-    curl_setopt($project_ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($project_ch,CURLOPT_TIMEOUT,2000);
-    curl_setopt($project_ch, CURLOPT_HTTPHEADER, [
-      'Accept: application/json, text/plain, */*',
-      'User-Agent: Postman',
-      'X-Requested-With: XMLHttpRequest'
-    ]);
-
-    $project_html = curl_exec($project_ch);
-    // Handles forks.
-    if(curl_getinfo($project_ch, CURLINFO_HTTP_CODE) !== 200) {
-      $project_html = $this->getForkProjectHtml($project_name);
-    }
-    curl_close($project_ch);
-
-    return $project_html;
-  }
-
-  private function getForkProjectHtml($project_name) {
-    $fork_ch = curl_init();
-    curl_setopt($fork_ch, CURLOPT_URL, 'https://git.drupalcode.org/issue/' . $project_name);
-    curl_setopt($fork_ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($fork_ch, CURLOPT_HTTPHEADER, [
-      'Accept: application/json, text/plain, */*',
-      'User-Agent: Postman',
-      'X-Requested-With: XMLHttpRequest'
-    ]);
-
-    $project_html = curl_exec($fork_ch);
-    curl_close($fork_ch);
-
-    return $project_html;
+    $this->handler->log(PHP_EOL . 'Total Drupalcode pushes: ' . count($this->pushes));
   }
 
 }

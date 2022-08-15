@@ -1,5 +1,7 @@
 # dos_dashboard
-Drupal open-source dashboard
+Drupal open-source dashboard.
+
+Able to gather issue credits from Drupal.org and parse activity from git.drupal.org.
 
 ## Prerequisites
 composer install && composer dump-autoload

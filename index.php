@@ -45,10 +45,10 @@ if (!empty($company) && !empty($user)) {
 echo "\n" . date('H:i') . ' Gathering credits from ' . $start . ' till ' . $end . ' ...';
 
 $credit_parser = new Credits($company, $user, $start_tm, $end_tm, $verbose, $mapping_file);
-$drupalcode_parser = new Drupalcode('', $start_tm, $end_tm);
+$drupalcode_parser = new Drupalcode('', $start_tm, $end_tm, $verbose, $mapping_file);
 
 $credit_pushes = $credit_parser->getPushes();
-echo "\n Gathered " . count($credit_parser->users) . ' users';
+echo "\n Gathered " . count($credit_parser->users) . ' users and ' . count($credit_pushes) . ' issue credits from Drupal.org';
 foreach ($credit_parser->users as $user) {
   echo "\n Processing user " . $user['name'];
   $drupalcode_parser->setUser($user['name']);
@@ -57,8 +57,10 @@ foreach ($credit_parser->users as $user) {
   $credit_pushes = array_merge($credit_pushes, $drupalcode_pushes);
   echo ", found " . count($drupalcode_pushes) . ' pushes to gitlab';
 }
-echo "\n Found " . count($credit_pushes) . ' pushes';die();
-//$pushes = array_merge($credit_pushes, $drupalcode_pushes);
-$credit_parser->handler->writeCSV($pushes);
+$credit_parser->handler->writeCSV($credit_pushes);
+echo "\n" . date('H:i') . ' Finish. (' . (count($credit_pushes)) . ' credits). ' . $credit_parser->handler::CSV_FILENAME;
 
-echo "\n" . date('H:i') . ' Finish. (' . (count($pushes)) . ' credits). ' . $credit_parser->handler::CSV_FILENAME;
+if (count($credit_parser->handler->unknown_users) > 0) {
+  echo "\n" . date('H:i') . ' Found . (' . (count($credit_parser->handler->unknown_users)) . ' unknown users)';
+  echo "'n" . implode(';', $credit_parser->handler->unknown_users);
+}
