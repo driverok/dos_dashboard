@@ -11,8 +11,10 @@ use function array_push;
 use function count;
 use function curl_close;
 use function curl_exec;
+use function explode;
 use function in_array;
 use function json_decode;
+use function sprintf;
 use function str_replace;
 use function strtotime;
 use function time;
@@ -23,6 +25,7 @@ class Drupalcode implements Contribution {
 
   public const CSV_FILENAME = '/tmp/contribution_credits.csv';
   private const DORG_USER_PROFILE_BASE = 'https://www.drupal.org/u/';
+  private const DORG_ISSUE_BASE = 'https://www.drupal.org/project/%s/issues/%s';
 
   /**
    * @var \Dosdashboard\Handler
@@ -46,6 +49,7 @@ class Drupalcode implements Contribution {
   public function clearState() {
     $this->offset = 0;
     $this->pushes = [];
+    $this->issues = [];
     $this->endActivity = FALSE;
   }
 
@@ -54,6 +58,7 @@ class Drupalcode implements Contribution {
       $this->getUserActivity();
     }
 
+  $this->handler->log(PHP_EOL . 'Total Drupalcode pushes: ' . count($this->pushes));
   return $this->pushes;
   }
 
@@ -91,6 +96,17 @@ class Drupalcode implements Contribution {
       return;
     }
     foreach ($events as $event) {
+      $event_type = trim($event->find('div.event-title')->find('span.event-type')->text);
+      if (!in_array($event_type, ['pushed to branch'])) {
+        continue;
+      }
+
+      [$project_name, $issue_number] = explode('-', $event->find('span.project-name')->text);
+      if (in_array($issue_number, $this->issues)) {
+        continue;
+      }
+      $this->issues[] = $issue_number;
+
       $time = $event->find('time')->text;
       $from = date('M d, Y', $this->fromTimestamp);
       $to = date('M d, Y', $this->toTimestamp);
@@ -109,25 +125,8 @@ class Drupalcode implements Contribution {
         return;
       }
 
-      $event_type = trim($event->find('div.event-title')->find('span.event-type')->text);
-      if (!in_array($event_type, ['pushed to branch', 'opened'])) {
-        continue;
-      }
-
-      if ($event_type === 'opened') {
-        $event_type .= ' ' . $event->find('div.event-title')
-            ->find('span.event-target-type')->text;
-        $contrib_description = $event->find('div.event-title')->find('.event-target-title')->text;
-        $contrib_url = 'https://git.drupalcode.org' . $event->find('div.event-title')->find('.event-target-link')->href;
-      }
-
-      if ($event_type === 'pushed to branch') {
-        $event_type .= ' ' . $event->find('div.event-title')
-            ->find('.text-truncate')
-            ->find('.ref-name')->text;
-        $contrib_description = $event->find('.commit-row-title')->text;
-        $contrib_url = 'https://git.drupalcode.org' . $event->find('.event-body')->find('.commit-sha')->href;
-      }
+      $contrib_description = $event->find('div.event-title')->find('.text-truncate')->find('.ref-name')->text;
+      $contrib_url = sprintf(self::DORG_ISSUE_BASE, $project_name, $issue_number);
 
       $this->pushes[] = [
         'user_email' => $this->handler->mapUser(self::DORG_USER_PROFILE_BASE . strtolower($this->userName)),
@@ -141,7 +140,6 @@ class Drupalcode implements Contribution {
         'contrib_description' => $contrib_description
       ];
     }
-    $this->handler->log(PHP_EOL . 'Total Drupalcode pushes: ' . count($this->pushes));
   }
 
 }
