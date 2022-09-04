@@ -57,6 +57,15 @@ foreach ($credit_parser->users as $user) {
   $credit_pushes = array_merge($credit_pushes, $drupalcode_pushes);
   echo ", found " . count($drupalcode_pushes) . ' pushes to gitlab';
 }
+
+// Filter unique contribs only
+$unique_pushes = [];
+foreach ($credit_pushes as $push) {
+  $id = $push['user_name'] . '|' . $push['contrib_url'];
+  isset($unique_pushes[$id]) or $unique_pushes[$id] = $push;
+}
+
+$credit_pushes = array_values($unique_pushes);
 $credit_parser->handler->writeCSV($credit_pushes);
 echo "\n" . date('H:i') . ' Finish. (' . (count($credit_pushes)) . ' credits). ' . $credit_parser->handler::CSV_FILENAME;
 
