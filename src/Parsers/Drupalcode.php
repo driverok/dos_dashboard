@@ -101,7 +101,9 @@ class Drupalcode implements Contribution {
         continue;
       }
 
-      [$project_name, $issue_number] = explode('-', $event->find('span.project-name')->text);
+      $project_arr = explode('-', $event->find('span.project-name')->text);
+      $project_name = $project_arr[0] ?? '';
+      $issue_number = $project_arr[1] ?? '';
       if (in_array($issue_number, $this->issues)) {
         continue;
       }
