@@ -26,6 +26,8 @@ php index.php --user=driverok --start=2022/02/01 --end=2022/02/27
 php index.php --company=2114867 --start=2022/01/01 --end=2022/07/31
 ```
 ### Get credits for company Epam for 2022 with mapping D.org names to company emails
+Please notice mapping file is a .csv file with the following structure:
+user's drupal.org url;company email
 ```
 php index.php --company=2114867 --start=2022/01/01 --end=2022/07/31 --mapping-file=epam_users.csv
 ```

@@ -9,9 +9,8 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "guzzlehttp/guzzle": "^6.5.8",
-        "kevinrob/guzzle-cache-middleware": "v3.5.0",
-        "league/flysystem": "^1.1.9",
+        "guzzlehttp/guzzle": "^7.5.0",
+        "kevinrob/guzzle-cache-middleware": "v4.0.2",
         "league/csv": "^9.8",
         "paquettg/php-html-parser": "*"
     },

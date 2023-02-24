@@ -13,6 +13,8 @@ Class Credits implements Contribution {
   public const USER_ENDPOINT = 'user.json';
   //public const EPAM_ID = 2114867;
   public const CONTRIB_TYPE = 'credit';
+  private const ISSUE_STATUS_FIXED = 2;
+  private const ISSUE_STATUS_CLOSED_FIXED = 7;
 
   /**
    * @var \Dosdashboard\Handler
@@ -64,8 +66,7 @@ Class Credits implements Contribution {
       if (!$this->inTimeFrame($issue['changed'])) {
         continue;
       }
-
-      if ($issue['field_issue_status'] !== '7' && $issue['field_issue_status'] !== '2') {
+      if ($issue['field_issue_status'] != self::ISSUE_STATUS_CLOSED_FIXED && $issue['field_issue_status'] != self::ISSUE_STATUS_FIXED) {
         continue;
       }
 

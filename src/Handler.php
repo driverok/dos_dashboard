@@ -1,6 +1,6 @@
 <?php
-namespace Dosdashboard;
 
+namespace Dosdashboard;
 
 use \GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
@@ -9,10 +9,6 @@ use \GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\HandlerStack;
 use JsonException;
 use Kevinrob\GuzzleCache\CacheMiddleware;
-
-use Kevinrob\GuzzleCache\Storage\FlysystemStorage;
-use Kevinrob\GuzzleCache\Strategy\PrivateCacheStrategy;
-use League\Flysystem\Adapter\Local;
 
 class Handler {
   public const CACHE_TTL = 180000;
@@ -39,13 +35,7 @@ class Handler {
   public function __construct($titles, $base_uri, $verbose, $mapping_file = NULL) {
     $stack = HandlerStack::create();
     $stack->push(
-      new CacheMiddleware(
-        new PrivateCacheStrategy(
-          new FlysystemStorage(
-            new Local(self::CACHE_LOCATION)
-          ), self::CACHE_TTL
-        )
-      ),
+      new CacheMiddleware(),
       'cache'
     );
     $this->client = new Client([
